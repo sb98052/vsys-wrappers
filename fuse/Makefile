@@ -1,4 +1,4 @@
-all: reroutemount.c reroutemount_server.c stolen_from_fuse.c
-	gcc -g -c stolen_from_fuse.c -o stolen_from_fuse.o
-	gcc -g stolen_from_fuse.o reroutemount_server.c -o reroutemount_server
-	gcc -g -shared stolen_from_fuse.o reroutemount.c -o reroutemount.so
+all: fuse_vsys_wrapper.so
+
+fuse_vsys_wrapper.so: stolen_from_fuse.c reroutemount.c
+	gcc -shared stolen_from_fuse.c reroutemount.c -o fuse_vsys_wrapper.so
