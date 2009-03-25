@@ -1,3 +1,6 @@
+// Modified version of library functions in FUSE
+//
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -6,16 +9,8 @@
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "stolen_from_fuse.h"
 
-// Most of this code is stolen from FUSE 2.7.4
-
-/** Function to pass a file descriptor over a UNIX socket.
-  * 
-  * Sends the file descriptor fd over the channel sock_fd.
-  *
-  ***/
-int rrm_send_fd(int sock_fd, int fd)
+int send_fd(int sock_fd, int fd)
 {
 	int retval;
 	struct msghdr msg;
@@ -56,7 +51,7 @@ int rrm_send_fd(int sock_fd, int fd)
  * >= 0	 => fd
  * -1	 => error
  */
-int rrm_receive_fd(int fd)
+int receive_fd(int fd)
 {
 	struct msghdr msg;
 	struct iovec iov;
@@ -96,67 +91,3 @@ int rrm_receive_fd(int fd)
 	return *(int*)CMSG_DATA(cmsg);
 }
 
-int rrm_fuse_mnt_umount(const char *progname, const char *mnt, int lazy)
-{
-	int res;
-	int status;
-	
-	res = umount2(mnt, lazy ? 2 : 0);
-	if (res == -1)
-	  fprintf(stderr, "%s: failed to unmount %s: %s\n",
-		  progname, mnt, strerror(errno));
-	return res;
-
-}
-
-static int rrm_try_open(const char *dev, char **devp, int silent)
-{
-	int fd = open(dev, O_RDWR);
-	if (fd != -1) {
-		*devp = strdup(dev);
-		if (*devp == NULL) {
-		  fprintf(stderr, "failed to allocate memory\n" );
-				
-			close(fd);
-			fd = -1;
-		}
-	} else if (errno == ENODEV ||
-		   errno == ENOENT)/* check for ENOENT too, for the udev case */
-		return -2;
-	else if (!silent) {
-		fprintf(stderr, "failed to open %s: %s\n", dev,
-			strerror(errno));
-	}
-	return fd;
-}
-
-static int rrm_try_open_fuse_device(char **devp)
-{
-	int fd;
-	int err;
-
-	//drop_privs();
-	fd = rrm_try_open(FUSE_DEV_NEW, devp, 0);
-	//restore_privs();
-	if (fd >= 0)
-		return fd;
-
-	err = fd;
-	fd = rrm_try_open(FUSE_DEV_OLD, devp, 1);
-	if (fd >= 0)
-		return fd;
-
-	return err;
-}
-
-int rrm_open_fuse_device(char **devp)
-{
-	int fd = rrm_try_open_fuse_device(devp);
-	if (fd >= -1)
-		return fd;
-
-	fprintf(stderr,
-		"fuse device not found, try 'modprobe fuse' first\n");
-
-	return -1;
-}

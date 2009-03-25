@@ -9,7 +9,7 @@
 char *socket_name = "/vsys/fd_fusemount.control";
 unsigned int arg_length = 128;
 
-void send_argument(int control_channel_fd, char *source) {
+void send_argument(int control_channel_fd, const char *source) {
     int sent;
     sent=send(control_channel_fd, source, arg_length, 0);
     if (sent<arg_length) {
@@ -99,17 +99,17 @@ int mount(const char *source, const char *target, const char *filesystemtype,
 
   old_fuse_fd = get_magic_fd (data);
 
-  send_fd(fd, old_fuse_fd);
 
-  if (fuse_fd == -1) {
-      printf ("Reroutemount: Could not identify FUSE fd: %d\n", fuse_fd);
+  if (old_fuse_fd == -1) {
+      printf ("Reroutemount: Could not identify FUSE fd: %d\n", old_fuse_fd);
       exit(1);
   }
 
+  send_fd(fd, old_fuse_fd);
   new_fuse_fd=receive_fd(fd);
 
   if (new_fuse_fd == -1) {
-      printf ("Reroutemount: Fusemount returned bad fd: %d\n", fuse_fd);
+      printf ("Reroutemount: Fusemount returned bad fd: %d\n", new_fuse_fd);
       exit(1);
   }
 
@@ -124,6 +124,7 @@ int mount(const char *source, const char *target, const char *filesystemtype,
 }
 
 int execv( const char *path, char *const argv[] ) {
+  int fd;
 
   if( strstr( path, "fusermount" ) == NULL ) {
     return execv( path, argv );
@@ -146,10 +147,9 @@ int execv( const char *path, char *const argv[] ) {
   }
 
   // Have root do any fusermounts we need done
-  int fd = connect_socket();
+  fd = connect_socket();
 
   do_umount( argv, n, fd );
-
   exit(0);
 
 }
