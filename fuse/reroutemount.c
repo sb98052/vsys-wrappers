@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "stolen_from_fuse.h"
+#include "fdpass.h"
 
 char *socket_name = "/vsys/fd_fusemount.control";
 unsigned int arg_length = 128;
