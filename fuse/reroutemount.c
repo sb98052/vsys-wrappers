@@ -7,7 +7,16 @@
 #include "stolen_from_fuse.h"
 
 char *socket_name = "/vsys/fd_fusemount.control";
+unsigned int arg_length = 128;
 
+void send_argument(int control_channel_fd, char *source) {
+    int sent;
+    sent=send(control_channel_fd, source, arg_length, 0);
+    if (sent<arg_length) {
+        printf("Error receiving arguments over the control buffer\n");
+        exit(1);
+    }
+}
 int connect_socket() {
   int fd = socket( AF_UNIX, SOCK_STREAM, 0 );
   struct sockaddr_un addr;
@@ -56,40 +65,57 @@ int umount2( const char *mnt, int flags ) {
  
 }
 
+int get_magic_fd (char *data) {
+    char *ptr;
+    int fd;
+
+    data[arg_length-1]='\0';
+    ptr = strstr(data,"fd=");
+    if (!ptr)
+        return -1;
+
+    // Found two fd= expressions
+    if (strstr(ptr+3,"fd="))
+        return -1;
+
+    if (*(ptr+3)!='\0') {
+        sscanf(ptr+3,"%d",&fd);
+        return fd;
+    }
+    else
+        return -1;
+}
 int mount(const char *source, const char *target, const char *filesystemtype,
         unsigned long mountflags, const void *data) {
-
   int fd = connect_socket();
+  int old_fuse_fd, new_fuse_fd;
 
   char buf[1024];
-  sprintf( buf, "%08x\n", 0 );
-  write( fd, buf, strlen(buf) );
 
-  sprintf( buf, "%s\n%s\n%s\n%ld\n%s\n", source, target, filesystemtype,
-	   mountflags, data );
-  write( fd, buf, strlen(buf) );
+  send_argument(fd, source);
+  send_argument(fd, target );
+  send_argument(fd, filesystemtype );
+  send_argument(fd, data );
 
-  char inbuf[10];
-  int n = read( fd, inbuf, 9 );
-  inbuf[n] = '\0';
+  old_fuse_fd = get_magic_fd (data);
 
-  int r;
-  assert( sscanf( inbuf, "%08x\n", &r ) == 1);
+  send_fd(fd, old_fuse_fd);
 
-  int fuse_fd = 0;
-  if( r < 0 ) {
-    errno = r;
-    return -1;
-  } else if( r > 0 ) {
-    // get the fd
-    fuse_fd = receive_fd(fd);
+  if (fuse_fd == -1) {
+      printf ("Reroutemount: Could not identify FUSE fd: %d\n", fuse_fd);
+      exit(1);
+  }
 
-    // what was the old fd?
-    int old_fd;
-    char extra[1024];
-    int s = sscanf( data, "fd=%d,%s", &old_fd, extra );
-    assert( dup2( fuse_fd, old_fd ) == old_fd );
+  new_fuse_fd=receive_fd(fd);
 
+  if (new_fuse_fd == -1) {
+      printf ("Reroutemount: Fusemount returned bad fd: %d\n", fuse_fd);
+      exit(1);
+  }
+
+  if( dup2(new_fuse_fd, old_fuse_fd ) != new_fuse_fd ) {
+      printf ("Could not duplicate returned file descriptor\n");
+      exit(1);
   }
 
   close(fd);
