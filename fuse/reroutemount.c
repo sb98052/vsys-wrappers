@@ -6,9 +6,9 @@
 #include <sys/un.h>
 #include "stolen_from_fuse.h"
 
-char *socket_name = "/vsys/local_fusemount.control";
+char *socket_name = "/vsys/fd_fusemount.control";
 
-int rrm_connect_socket() {
+int connect_socket() {
   int fd = socket( AF_UNIX, SOCK_STREAM, 0 );
   struct sockaddr_un addr;
   addr.sun_family = AF_UNIX;
@@ -18,7 +18,7 @@ int rrm_connect_socket() {
   return fd;
 }
 
-void rrm_do_umount( char *const argv[], int n, int fd ) {
+void do_umount( char *const argv[], int n, int fd ) {
 
   // write the length
   char buf[1024];
@@ -43,14 +43,14 @@ void rrm_do_umount( char *const argv[], int n, int fd ) {
 
 int umount2( const char *mnt, int flags ) {
  
-  int fd = rrm_connect_socket();
+  int fd = connect_socket();
 
   const char *argv[3];
   argv[0] = "fusermount";
   argv[1] = "-u";
   argv[2] = mnt;
 
-  rrm_do_umount( (char **const) argv, 3, fd );
+  do_umount( (char **const) argv, 3, fd );
 
   close(fd);
  
@@ -59,8 +59,8 @@ int umount2( const char *mnt, int flags ) {
 int mount(const char *source, const char *target, const char *filesystemtype,
         unsigned long mountflags, const void *data) {
 
-  int fd = rrm_connect_socket();
-  
+  int fd = connect_socket();
+
   char buf[1024];
   sprintf( buf, "%08x\n", 0 );
   write( fd, buf, strlen(buf) );
@@ -82,7 +82,7 @@ int mount(const char *source, const char *target, const char *filesystemtype,
     return -1;
   } else if( r > 0 ) {
     // get the fd
-    fuse_fd = rrm_receive_fd(fd);
+    fuse_fd = receive_fd(fd);
 
     // what was the old fd?
     int old_fd;
@@ -120,9 +120,9 @@ int execv( const char *path, char *const argv[] ) {
   }
 
   // Have root do any fusermounts we need done
-  int fd = rrm_connect_socket();
+  int fd = connect_socket();
 
-  rrm_do_umount( argv, n, fd );
+  do_umount( argv, n, fd );
 
   exit(0);
 
