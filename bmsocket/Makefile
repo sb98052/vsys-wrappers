@@ -1,6 +1,7 @@
 all: bmsocket.so
 
 LIBDIR=../lib/
+INCLUDEDIR=../lib/
 
 bmsocket.so: bmsocket.c $(LIBDIR)/fdpass.c
-	gcc -shared -c bmsocket.c $(LIBDIR)/fdpass.c -o bmsocket.so
+	gcc -I$(INCLUDEDIR) -shared bmsocket.c $(LIBDIR)/fdpass.c -o bmsocket.so
