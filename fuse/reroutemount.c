@@ -6,8 +6,8 @@
 #include <sys/un.h>
 #include "fdpass.h"
 
-//char *socket_name = "/vsys/fd_fusemount.control";
-char *socket_name = "/foo";
+char *socket_name = "/vsys/fd_fusemount.control";
+
 unsigned int arg_length = 128;
 
 void send_argument(int control_channel_fd, const char *source) {
