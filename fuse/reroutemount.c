@@ -6,7 +6,8 @@
 #include <sys/un.h>
 #include "fdpass.h"
 
-char *socket_name = "/vsys/fd_fusemount.control";
+//char *socket_name = "/vsys/fd_fusemount.control";
+char *socket_name = "/foo";
 unsigned int arg_length = 128;
 
 void send_argument(int control_channel_fd, const char *source) {
@@ -24,6 +25,7 @@ int connect_socket() {
   addr.sun_family = AF_UNIX;
   strcpy( addr.sun_path, socket_name );
   int len = strlen(socket_name) + sizeof(addr.sun_family);
+  printf("Connecting to %s\n", socket_name);
   assert( connect( fd, (struct sockaddr *) &addr, len ) == 0 );
   return fd;
 }
@@ -53,6 +55,7 @@ int mount(const char *source, const char *target, const char *filesystemtype,
         unsigned long mountflags, const void *data) {
   int fd = connect_socket();
   int old_fuse_fd, new_fuse_fd;
+  int dupfd;
 
   char buf[1024];
 
@@ -77,8 +80,8 @@ int mount(const char *source, const char *target, const char *filesystemtype,
       exit(1);
   }
 
-  if( dup2(new_fuse_fd, old_fuse_fd ) != new_fuse_fd ) {
-      printf ("Could not duplicate returned file descriptor\n");
+  if( (dupfd=dup2(new_fuse_fd, old_fuse_fd )) != old_fuse_fd ) {
+      printf ("Could not duplicate returned file descriptor: %d\n",dupfd);
       exit(1);
   }
 
