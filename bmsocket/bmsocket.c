@@ -7,7 +7,7 @@
 
 #define VSYS_BMSOCKET "/vsys/fd_bmsocket.control"
 
-int socket(int domain, int type, int protocol)
+int CreateLargeBufSocket(int recvbuf, int sndbuf)
 {
     int sfd;
     struct sockaddr_un addr;
@@ -31,6 +31,16 @@ int socket(int domain, int type, int protocol)
         exit(-1);
     }
 
+    /* passing the parameters */
+    if (send(sfd, &recvbuf, sizeof(recvbuf), 0) != sizeof(recvbuf)) {
+        perror("Could not connect to Vsys control socket");
+        exit(-1);
+
+    }
+    if (send(sfd, &sndbuf, sizeof(sndbuf), 0) != sizeof(sndbuf)) {
+        perror("Could not connect to Vsys control socket");
+        exit(-1);
+    }
 
     remotefd = receive_fd(sfd);
     return remotefd;
