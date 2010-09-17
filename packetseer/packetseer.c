@@ -25,10 +25,9 @@ int socket(int f, int p, int s)
         }
         socket_orig = dlsym(handle, "socket");
         if (!socket_orig) {
-            fprintf(stderr,"Error loading socket symbol");
+            fprintf(stderr,"Error loading socket symbol\n");
             return -1;
         }
-        fprintf(stderr,"Socket call: %x",socket_orig);
     }
 
     if (f == PF_PACKET) {
@@ -36,6 +35,7 @@ int socket(int f, int p, int s)
         struct sockaddr_un addr;
         int remotefd;
 
+        printf("[packetseer] Rerouting socket call via vsys...\n");
         sfd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (sfd == -1) {
             perror("Could not create UNIX socket\n");
@@ -55,6 +55,7 @@ int socket(int f, int p, int s)
         }
 
         remotefd = receive_fd(sfd);
+        printf("Received fd %d",remotefd);
         return remotefd;
     }
     else
